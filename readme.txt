@@ -147,10 +147,6 @@ $myValue = $titan->getOption( 'option_name', $post_id );`
 
 **For developers: for documentation and examples, please visit our website at [titanframework.net](http://titanframework.net)**
 
-== Upgrade Notice ==
-
-== Screenshots ==
-
 == Changelog ==
 
 = 1.0 =
