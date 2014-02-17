@@ -64,7 +64,9 @@ Titan Framework allows theme and plugin developers to create a admin pages, opti
 
 **Please visit our website at [titanframework.net](http://titanframework.net)**
 
-== Sample Code ==
+== Developers ==
+
+**For developers: if you want to use Titan Framework in your WordPress projects, please visit our website at [titanframework.net](http://titanframework.net)**
 
 = Creating an admin menu and submenu =
 
