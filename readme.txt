@@ -4,7 +4,7 @@ Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_i
 Tags: framework, options, admin, admin panel, meta box, theme customizer, option framework, library, sdk
 Requires at least: 3.8
 Tested up to: 3.8.1
-Stable tag: 1.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -64,9 +64,7 @@ Titan Framework allows theme and plugin developers to create a admin pages, opti
 
 **Please visit our website at [titanframework.net](http://titanframework.net)**
 
-== Developers ==
-
-**For developers: if you want to use Titan Framework in your WordPress projects, please visit our website at [titanframework.net](http://titanframework.net)**
+== Sample Code ==
 
 = Creating an admin menu and submenu =
 
@@ -148,6 +146,10 @@ $myValue = $titan->getOption( 'option_name' );
 $myValue = $titan->getOption( 'option_name', $post_id );`
 
 **For developers: for documentation and examples, please visit our website at [titanframework.net](http://titanframework.net)**
+
+== Upgrade Notice ==
+
+== Screenshots ==
 
 == Changelog ==
 
