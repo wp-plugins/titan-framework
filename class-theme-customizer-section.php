@@ -57,7 +57,15 @@ class TitanFrameworkThemeCustomizerSection {
                 ?>
                 wp.customize( '<?php echo $option->getID() ?>', function( v ) {
                     v.bind( function( value ) {
-                        <?php echo $option->settings['livepreview'] ?>
+                        <?php
+
+                        // Some options may want to insert custom jQuery code before manipulation of live preview
+                        if ( ! empty( $option->settings['id'] ) ) {
+                            do_action( 'tf_livepreview_pre', $option->settings['id'], $option->settings['type'], $option );
+                        }
+
+                        echo $option->settings['livepreview'];
+                        ?>
                     } );
                 } );
                 <?php
@@ -77,7 +85,7 @@ class TitanFrameworkThemeCustomizerSection {
         ) );
 
         // Unfortunately we have to call each option's register from here
-        foreach ( $this->options as $option ) {
+        foreach ( $this->options as $index => $option ) {
             if ( ! empty( $option->settings['id'] ) ) {
                 $wp_customize->add_setting( $option->getID() , array(
                     'default' => $option->settings['default'],
@@ -85,7 +93,9 @@ class TitanFrameworkThemeCustomizerSection {
                 ) );
             }
 
-            $option->registerCustomizerControl( $wp_customize, $this );
+            // We add the index here, this will be used to order the controls because of this minor bug:
+            // https://core.trac.wordpress.org/ticket/20733
+            $option->registerCustomizerControl( $wp_customize, $this, $index + 1 );
         }
 
         add_action( 'wp_footer', array( $this, 'livePreview' ) );
