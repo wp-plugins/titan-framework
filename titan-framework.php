@@ -4,7 +4,7 @@ Plugin Name: Titan Framework
 Plugin URI: http://titanframework.net/
 Description: Titan Framework allows theme and plugin developers to create a admin pages, options, meta boxes, and theme customizer options with just a few simple lines of code.
 Author: Benjamin Intal, Gambit
-Version: 1.0.2
+Version: 1.1
 Author URI: http://gambit.ph
 */
 
@@ -25,6 +25,7 @@ require_once( plugin_dir_path( __FILE__ ) . 'class-meta-box.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-checkbox.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-color.php' );
+require_once( plugin_dir_path( __FILE__ ) . 'class-option-editor.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-heading.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-multicheck.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-multicheck-categories.php' );
@@ -33,6 +34,7 @@ require_once( plugin_dir_path( __FILE__ ) . 'class-option-multicheck-posts.php' 
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-note.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-number.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-radio.php' );
+require_once( plugin_dir_path( __FILE__ ) . 'class-option-radio-palette.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-save.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-select-categories.php' );
 require_once( plugin_dir_path( __FILE__ ) . 'class-option-select-googlefont.php' );
