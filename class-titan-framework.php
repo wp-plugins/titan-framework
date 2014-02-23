@@ -13,6 +13,7 @@ class TitanFramework {
     private $googleFontsOptions = array();
 
     private static $instances = array();
+    private static $allOptionIDs = array();
     private static $allOptions;
 
     // We store
@@ -47,11 +48,38 @@ class TitanFramework {
         add_action( 'admin_enqueue_scripts', array( $this, "loadAdminScripts" ) );
         add_action( 'wp_enqueue_scripts', array( $this, "loadFrontEndScripts" ) );
         add_action( 'tf_create_option', array( $this, "rememberGoogleFonts" ) );
+        add_action( 'tf_create_option', array( $this, "verifyUniqueIDs" ) );
+    }
+
+    /**
+     * Checks all the ids and shows a warning when multiple occurances of an id is found.
+     * This is to ensure that there won't be any option conflicts
+     *
+     * @param   TitanFrameworkOption $option The object just created
+     * @return  null
+     * @since   1.1.1
+     */
+    public function verifyUniqueIDs( $option ) {
+        if ( empty( $option->settings['id'] ) ) {
+            return;
+        }
+
+        if ( in_array( $option->settings['id'], self::$allOptionIDs ) ) {
+            self::displayFrameworkError(
+                sprintf( __( 'All option IDs must be unique. The id %s has been used multiple times.', TF_I18NDOMAIN ),
+                    '<code>' . $option->settings['id'] . '</code>'
+                )
+            );
+        } else {
+            self::$allOptionIDs[] = $option->settings['id'];
+        }
     }
 
     public function rememberGoogleFonts( $option ) {
         if ( is_a( $option, 'TitanFrameworkOptionSelectGooglefont' ) ) {
-            $this->googleFontsOptions[] = $option;
+            if ( $option->settings['enqueue'] ) {
+                $this->googleFontsOptions[] = $option;
+            }
         }
     }
 
@@ -116,6 +144,12 @@ class TitanFramework {
      */
     public function updateThemeModListing() {
         $allThemeMods = get_theme_mods();
+
+        // For fresh installs there won't be any theme mods yet
+        if ( $allThemeMods === false ) {
+            $allThemeMods = array();
+        }
+
         $allThemeModKeys = array_fill_keys( array_keys( $allThemeMods ), null );
 
         // Check existing theme mods
