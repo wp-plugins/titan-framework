@@ -4,6 +4,10 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 class TitanFrameworkOptionSelectGooglefont extends TitanFrameworkOption {
 
+    public $defaultSecondarySettings = array(
+        'enqueue' => true,
+    );
+
     public static $firstLoad = true;
 
     public static function formScript( $value ) {
@@ -95,8 +99,11 @@ class TitanFrameworkOptionSelectGooglefont extends TitanFrameworkOption {
             $('select.tf-select-googlefont ~ input').each(function() {
                 var val = $(this).val();
                 if ( val != '' ) {
-                    val = unserialize(val);
-                    console.log('value:', val);
+                    try {
+                        val = unserialize(val);
+                    } catch (err) {
+                        return;
+                    }
 
                     var $this = $(this);
                     $.each(val.variants, function(i, variant) {
@@ -271,29 +278,30 @@ class TitanFrameworkOptionSelectGooglefont extends TitanFrameworkOption {
             return $value;
         }
         if ( is_serialized( stripslashes( $value ) ) ) {
-            // var_dump(stripslashes( $value ));
             $value = unserialize( stripslashes( $value ) );
             $value['css'] = self::formCSS( $value );
             $value['fontFamily'] = self::formFormFamily( $value );
             return $value;
         }
-        if ( is_string( $value ) ) {
+        if ( is_string( $value ) && stripos( $value, ',' ) !== false ) {
             $value = explode( ',', $value );
             $value['css'] = self::formCSS( $value );
             $value['fontFamily'] = self::formFormFamily( $value );
             return $value;
         }
+        return $this->settings['default'];
     }
 
     /*
      * Display for theme customizer
      */
-    public function registerCustomizerControl( $wp_customize, $section ) {
+    public function registerCustomizerControl( $wp_customize, $section, $priority = 1 ) {
         $wp_customize->add_control( new TitanFrameworkOptionSelectGooglefontControl( $wp_customize, $this->getID(), array(
             'label' => $this->settings['name'],
             'section' => $section->settings['id'],
             'settings' => $this->getID(),
             'description' => $this->settings['desc'],
+            'priority' => $priority,
         ) ) );
     }
 }
