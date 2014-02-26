@@ -77,7 +77,8 @@ class TitanFrameworkMetaBox {
     }
 
     public function saveOptions( $postID, $post ) {
-        if ( ! $this->verifySecurity( $postID ) ) {
+		// Verify nonces and other stuff
+        if ( ! $this->verifySecurity( $postID, $post ) ) {
             return;
         }
 
@@ -97,10 +98,14 @@ class TitanFrameworkMetaBox {
         }
     }
 
-    private function verifySecurity( $postID ) {
+    private function verifySecurity( $postID, $post ) {
+		// Verify edit submission
         if ( empty( $_POST ) ) {
             return false;
         }
+		if ( empty( $_POST['post_type'] ) ) {
+			return false;
+		}
 
         // Don't save on revisions
         if ( wp_is_post_revision( $postID ) ) {
@@ -111,6 +116,14 @@ class TitanFrameworkMetaBox {
         if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
             return false;
         }
+
+		// Verify that we are editing the correct post type
+		if ( $_POST['post_type'] != $this->settings['post_type'] ) {
+			return false;
+		}
+		if ( $post->post_type != $this->settings['post_type'] ) {
+			return false;
+		}
 
         // Verify our nonce
         if ( ! check_admin_referer( $this->settings['id'], TF . '_' . $this->settings['id'] . '_nonce' ) ) {
@@ -130,13 +143,12 @@ class TitanFrameworkMetaBox {
     }
 
     public function createOption( $settings ) {
-        $obj = TitanFrameworkOption::factory( $settings, $this );
-        // $obj = new TitanFrameworkOption( $settings, $this );
-        $this->options[] = $obj;
+		if ( ! apply_filters( 'tf_create_option_continue', true, $settings ) ) {
+			return null;
+		}
 
-        if ( ! empty( $obj->settings['id'] ) ) {
-            $this->owner->optionsUsed[$obj->settings['id']] = $obj;
-        }
+        $obj = TitanFrameworkOption::factory( $settings, $this );
+        $this->options[] = $obj;
 
         do_action( 'tf_create_option', $obj );
 
