@@ -35,13 +35,12 @@ class TitanFrameworkAdminTab {
     }
 
     public function createOption( $settings ) {
-        $obj = TitanFrameworkOption::factory( $settings, $this );
-        // $obj = new TitanFrameworkOption( $settings, $this );
-        $this->options[] = $obj;
+		if ( ! apply_filters( 'tf_create_option_continue', true, $settings ) ) {
+			return null;
+		}
 
-        if ( ! empty( $obj->settings['id'] ) ) {
-            $this->owner->owner->optionsUsed[$obj->settings['id']] = $obj;
-        }
+        $obj = TitanFrameworkOption::factory( $settings, $this );
+        $this->options[] = $obj;
 
         do_action( 'tf_create_option', $obj );
 

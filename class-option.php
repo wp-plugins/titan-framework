@@ -128,7 +128,7 @@ class TitanFrameworkOption {
         return $this->getOptionNamespace() . '_' . $this->settings['id'];
     }
 
-    protected function __call( $name, $args ) {
+    public function __call( $name, $args ) {
         $default = is_array( $args ) && count( $args ) ? $args[0] : '';
         if ( stripos( $name, 'get' ) === 0) {
             $setting = strtolower( substr( $name, 3 ) );
@@ -138,6 +138,14 @@ class TitanFrameworkOption {
     }
 
     protected function echoOptionHeader( $showDesc = false ) {
+        // Allow overriding for custom styling
+        $useCustom = false;
+        $useCustom = apply_filters( 'tf_use_custom_option_header', $useCustom );
+        if ( $useCustom ) {
+            do_action( 'tf_custom_option_header', $this );
+            return;
+        }
+
         $id = $this->getID();
         $name = $this->getName();
         ?>
@@ -157,6 +165,14 @@ class TitanFrameworkOption {
     }
 
     protected function echoOptionFooter( $showDesc = true ) {
+        // Allow overriding for custom styling
+        $useCustom = false;
+        $useCustom = apply_filters( 'tf_use_custom_option_footer', $useCustom );
+        if ( $useCustom ) {
+            do_action( 'tf_custom_option_footer', $this );
+            return;
+        }
+
         $desc = $this->getDesc();
         if ( ! empty( $desc ) && $showDesc ):
             ?>
@@ -188,11 +204,14 @@ class TitanFrameworkOption {
 
     /* overridden */
     public function cleanValueForGetting( $value ) {
+        if ( is_array( $value ) ) {
+            return $value;
+        }
         return stripslashes( $value );
     }
 
     /* overridden */
-    public function registerCustomizerControl( $wp_customize, $section ) {
+    public function registerCustomizerControl( $wp_customize, $section, $priority = 1 ) {
 
     }
 }

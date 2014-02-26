@@ -2,11 +2,12 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
-class TitanFrameworkOptionText extends TitanFrameworkOption {
+class TitanFrameworkOptionEditor extends TitanFrameworkOption {
 
     public $defaultSecondarySettings = array(
-        'placeholder' => '', // show this when blank
-        'is_password' => false,
+        'wpautop' => true,
+        'media_buttons' => true,
+        'rows' => 10,
     );
 
     /*
@@ -14,14 +15,23 @@ class TitanFrameworkOptionText extends TitanFrameworkOption {
      */
     public function display() {
         $this->echoOptionHeader();
-        printf("<input class=\"regular-text\" name=\"%s\" placeholder=\"%s\" id=\"%s\" type=\"%s\" value=\"%s\"\>",
-            $this->getID(),
-            $this->settings['placeholder'],
-            $this->getID(),
-            $this->settings['is_password'] ? 'password' : 'text',
-            esc_attr( $this->getValue() ) );
+
+        wp_editor( $this->getValue(), $this->getID(), array(
+            'wpautop' => $this->settings['wpautop'],
+            'media_buttons' => $this->settings['media_buttons'],
+            'textarea_rows' => $this->settings['rows'],
+        ) );
+
         $this->echoOptionFooter();
     }
+
+    public function cleanValueForGetting( $value ) {
+        if ( $this->settings['wpautop'] ) {
+            return wpautop( stripslashes( $value ) );
+        }
+        return stripslashes( $value );
+    }
+
 
     /*
      * Display for theme customizer
