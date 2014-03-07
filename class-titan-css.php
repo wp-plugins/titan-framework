@@ -145,7 +145,7 @@ class TitanFrameworkCSS {
 	 * @return  string CSS rules of SaSS variables
 	 * @since   1.2
 	 */
-	private function formCSSVariables( $id, $value, $key = false, $cssString = '' ) {
+	private function formCSSVariables( $id, $type, $value, $key = false, $cssString = '' ) {
 		if ( is_serialized( $value ) ) {
 			$value = unserialize( stripslashes( $value ) );
 		}
@@ -154,14 +154,14 @@ class TitanFrameworkCSS {
 				if ( $key !== false ) {
 					$subKey = $key . '-' . $subKey;
 				}
-				$cssString = $this->formCSSVariables( $id, $subValue, $subKey, $cssString );
+				$cssString = $this->formCSSVariables( $id, $type, $subValue, $subKey, $cssString );
 			}
 		} else {
-			// If the value is a color, don't wrap it in quotes
-			if ( preg_match( '/^#[a-f0-9]{6}$/i', $value ) ) {
-				$value = esc_attr( $value );
-			} else {
-				$value = "'" . esc_attr( $value ) . "'";
+			$value = esc_attr( $value );
+
+			// If the value is a file address, wrap it in quotes
+			if ( $type === 'upload' ) {
+				$value = "'" . $value . "'";
 			}
 
 			if ( false === $key  ) {
@@ -220,6 +220,7 @@ class TitanFrameworkCSS {
 			// Add the values as SaSS variables
 			$generatedCSS = $this->formCSSVariables(
 				$option->settings['id'],
+				$option->settings['type'],
 				$this->frameworkInstance->getOption( $option->settings['id'] )
 			);
 

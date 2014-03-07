@@ -4,7 +4,7 @@ Plugin Name: Titan Framework
 Plugin URI: http://titanframework.net/
 Description: Titan Framework allows theme and plugin developers to create a admin pages, options, meta boxes, and theme customizer options with just a few simple lines of code.
 Author: Benjamin Intal, Gambit
-Version: 1.3
+Version: 1.4
 Author URI: http://gambit.ph
 */
 
@@ -28,6 +28,7 @@ require_once( TF_PATH . 'class-option-checkbox.php' );
 require_once( TF_PATH . 'class-option-code.php' );
 require_once( TF_PATH . 'class-option-color.php' );
 require_once( TF_PATH . 'class-option-editor.php' );
+require_once( TF_PATH . 'class-option-font.php' );
 require_once( TF_PATH . 'class-option-heading.php' );
 require_once( TF_PATH . 'class-option-multicheck.php' );
 require_once( TF_PATH . 'class-option-multicheck-categories.php' );
@@ -44,6 +45,7 @@ require_once( TF_PATH . 'class-option-select-googlefont.php' );
 require_once( TF_PATH . 'class-option-select-pages.php' );
 require_once( TF_PATH . 'class-option-select-posts.php' );
 require_once( TF_PATH . 'class-option-select.php' );
+require_once( TF_PATH . 'class-option-sortable.php' );
 require_once( TF_PATH . 'class-option-text.php' );
 require_once( TF_PATH . 'class-option-textarea.php' );
 require_once( TF_PATH . 'class-option-upload.php' );
@@ -52,6 +54,7 @@ require_once( TF_PATH . 'class-titan-css.php' );
 require_once( TF_PATH . 'class-titan-framework.php' );
 require_once( TF_PATH . 'class-wp-customize-control.php' );
 require_once( TF_PATH . 'functions-googlefonts.php' );
+require_once( TF_PATH . 'functions-utils.php' );
 
 
 /**

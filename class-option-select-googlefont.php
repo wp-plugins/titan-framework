@@ -1,4 +1,10 @@
 <?php
+/**
+ * Select Google Font Option
+ *
+ * @deprecated deprecated since 1.4, should be removed in 1.5
+ * @since	1.0
+ */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
@@ -9,6 +15,50 @@ class TitanFrameworkOptionSelectGooglefont extends TitanFrameworkOption {
 	);
 
 	public static $firstLoad = true;
+
+
+	/**
+	 * Constructor
+	 *
+	 * @since	1.4
+	 */
+	function __construct( $settings, $owner ) {
+		if ( defined( 'WP_DEBUG' ) ) {
+			if ( WP_DEBUG == true ) {
+				// Warn about deprecation, refer to `font` option
+				TitanFramework::displayFrameworkError( sprintf( __( '%s has been deprecated and will be removed in version %s! Please use %s instead to avoid errors in the future.', TF_I18NDOMAIN ), '<code>select-googlefont</code>', '<code>1.5</code>', '<code>font</code>' ) );
+			}
+		}
+
+		parent::__construct( $settings, $owner );
+
+		add_filter( 'tf_generate_css_select-googlefont', array( $this, 'generateCSS' ), 10, 2 );
+	}
+
+
+	/**
+	 * Generates CSS for the font, this is used in TitanFrameworkCSS
+	 *
+	 * @param	string $css The CSS generated
+	 * @param	TitanFrameworkOption $option The current option being processed
+	 * @return	string The CSS generated
+	 * @since	1.4
+	 */
+	public function generateCSS( $css, $option ) {
+		$value = $this->getFramework()->getOption( $option->settings['id'] );
+
+		if ( ! empty( $value['fontFamily'] ) ) {
+			$css .= "\$" . $option->settings['id'] . "-name: " . $value['fontFamily'] . ";";
+			$css .= "\$" . $option->settings['id'] . ": " . $value['fontFamily'] . ";";
+		}
+
+		if ( ! empty( $option->settings['css'] ) ) {
+			$css .= str_replace( 'value', '$' . $option->settings['id'], $option->settings['css'] );
+		}
+
+		return $css;
+	}
+
 
 	public static function formScript( $value ) {
 		if ( empty( $value ) ) {
