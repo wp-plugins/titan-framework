@@ -63,14 +63,14 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 	 * @since	1.4
 	 */
 	function __construct( $settings, $owner ) {
+		parent::__construct( $settings, $owner );
+
 		add_action( 'admin_enqueue_scripts', array( $this, "loadAdminScripts" ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'loadAdminScripts' ) );
 		add_action( 'admin_head', array( __CLASS__, 'createFontScript' ) );
-		add_action( 'tf_create_option', array( $this, "rememberGoogleFonts" ) );
+		add_action( 'tf_create_option_' . $this->getOptionNamespace(), array( $this, "rememberGoogleFonts" ) );
 		add_action( 'wp_enqueue_scripts', array( $this, "enqueueGooglefonts" ) );
-		add_filter( 'tf_generate_css_font', array( $this, 'generateCSS' ), 10, 2 );
-
-		parent::__construct( $settings, $owner );
+		add_filter( 'tf_generate_css_font_' . $this->getOptionNamespace(), array( $this, 'generateCSS' ), 10, 2 );
 	}
 
 
@@ -140,7 +140,7 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		}
 
 		// Font subsets, allow others to change this
-		$subsets = apply_filters( 'tf_google_font_subsets', array( 'latin', 'latin-ext', ) );
+		$subsets = apply_filters( 'tf_google_font_subsets_' . $this->getOptionNamespace(), array( 'latin', 'latin-ext', ) );
 
 		// Enqueue the Google Font
 		foreach ( $fontsToLoad as $fontName => $variants ) {
@@ -172,6 +172,10 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 	 * @since	1.4
 	 */
 	public function generateCSS( $css, $option ) {
+		if ( $this->settings['id'] != $option->settings['id'] ) {
+			return $css;
+		}
+
 		$value = $this->getFramework()->getOption( $option->settings['id'] );
 
 		$skip = array( 'dark', 'font-type', 'text-shadow-distance', 'text-shadow-blur', 'text-shadow-color', 'text-shadow-opacity' );
@@ -234,7 +238,7 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		 * Using `value` will print out the entire font CSS
 		 */
 
-		// Create the entire CSS for the font
+		// Create the entire CSS for the font, this should just be used to replace the `value` variable
 		$cssVariables = '';
 		$cssVariableArray = array( 'font-family', 'color', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing',
 		'text-transform', 'font-variant', 'text-shadow' );
@@ -252,7 +256,6 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 			$modifiedCss = str_replace( 'value-', '$' . $option->settings['id'] . '-', $modifiedCss );
 		}
 
-		$css .= $cssVariables;
 		$css .= $modifiedCss;
 
 		return $css;
@@ -336,12 +339,14 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 				}, 1 );
 			});
 
-			$('body').on('click', function() {
+			$('body.wp-customizer').on('click', function(e) {
 				$('.tf-font .wp-color-result').each(function() {
 					if ( $(this).hasClass('wp-picker-open') ) {
 						$(this).parents('label:eq(0)').addClass('tf-picker-open');
 					} else {
-						$(this).parents('label:eq(0)').removeClass('tf-picker-open');
+						if ( $(this).parents('label:eq(0)').hasClass('tf-picker-open') ) {
+							$(this).parents('label:eq(0)').removeClass('tf-picker-open');
+						}
 					}
 				});
 			});
@@ -819,7 +824,7 @@ function registerTitanFrameworkOptionFontControl() {
 			TitanFrameworkOptionFont::createFontScript();
 
 			?>
-			<label class='tf-font'>
+			<div class='tf-font'>
 				<span class="customize-control-title"><?php echo esc_html( $this->label ); ?></span>
 			<?php
 
@@ -1143,7 +1148,7 @@ function registerTitanFrameworkOptionFontControl() {
 
 			?>
 			<input type='hidden' class='tf-for-saving' <?php $this->link() ?> value='<?php echo esc_attr( $value ) ?>'/>
-			</label>
+			</div>
 			<?php
 			echo "<p class='description'>{$this->description}</p>";
 		}

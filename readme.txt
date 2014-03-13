@@ -4,7 +4,7 @@ Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_i
 Tags: framework, options, admin, admin panel, meta box, theme customizer, option framework, library, sdk
 Requires at least: 3.8
 Tested up to: 3.8.1
-Stable tag: 1.4
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -16,9 +16,9 @@ Titan Framework allows theme and plugin developers to create a admin pages, opti
 
 = The Goal =
 
-Titan Framework aims to be easily used by everyone. The goal is to make it plug and play - just activate the plugin and start creating your options. Read our guide on how to [Get Started with Titan Framework](https://www.titanframework.net/get-started/)
+Titan Framework aims to be easily used by everyone. The goal is to make it plug and play - just activate the plugin and start creating your options. Read our guide on how to [Get Started with Titan Framework](http://www.titanframework.net/get-started/)
 
-* [Documentation and Tutorials for Developers](http://titanframework.net)
+* [Documentation and Tutorials for Developers](http://www.titanframework.net/docs)
 * [Titan Framework GitHub Repository](https://github.com/gambitph/Titan-Framework)
 * [Issue Tracker](https://github.com/gambitph/Titan-Framework/issues)
 
@@ -95,15 +95,19 @@ If Titan Framework has helped you in any way, we would appreciate any amount of 
 
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=9X7HJBGJ37VH6)
 
+= Special Thanks to all the Contributors =
+
+@ardallan, @BrazenlyGeek, @davidossahdez, and @dovy
+
 == Installation ==
 
 1. Upload `plugin-name.php` to the `/wp-content/plugins/` directory
 2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Use the provided classes and functions in your theme or plugin. Read our guide on how to [Get Started with Titan Framework](https://www.titanframework.net/get-started/)
+3. Use the provided classes and functions in your theme or plugin. Read our guide on how to [Get Started with Titan Framework](http://www.titanframework.net/get-started/)
 
 == Frequently Asked Questions ==
 
-* [Site FAQs](https://www.titanframework.net/faqs/)
+* [Site FAQs](http://www.titanframework.net/faqs/)
 * [Documentation and Tutorials for Developers](http://titanframework.net)
 * [Titan Framework GitHub Repository](https://github.com/gambitph/Titan-Framework)
 * [Issue Tracker](https://github.com/gambitph/Titan-Framework/issues)
@@ -201,6 +205,18 @@ $myValue = $titan->getOption( 'option_name', $post_id );`
 4. Sample code on how to create admin pages and options
 
 == Changelog ==
+
+= 1.4.1 =
+* Added some new hooks
+* Added namespaces to all hooks
+* Added meta links
+* Fixed bug where font drop downs closed immediately in Firefox
+* Fixed bug where getInstance did not return the same instance sometimes
+* Fixed bug where the font option did not generate CSS correctly
+* Fixed bug where only one Titan instance generated CSS files
+* Fixed bug where CSS were being generated multiple times
+* Fixed bug where option IDs in different instances caused an error
+* Fixed bug where the live preview lagged a lot
 
 = 1.4 =
 * Added new Font option

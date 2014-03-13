@@ -30,18 +30,18 @@ class TitanFrameworkOptionCode extends TitanFrameworkOption {
 	 * @since	1.3
 	 */
 	function __construct( $settings, $owner ) {
+		parent::__construct( $settings, $owner );
+
 		add_action( 'admin_enqueue_scripts', array( $this, "loadAdminScripts" ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'loadAdminScripts' ) );
 
 		// CSS generation for CSS code langs
-		add_filter( 'tf_generate_css_code', array( $this, "generateCSSCode" ), 10, 2 );
+		add_filter( 'tf_generate_css_code_' . $this->getOptionNamespace(), array( $this, "generateCSSCode" ), 10, 2 );
 		add_filter( 'wp_head', array( $this, "printCSSForPagesAndPosts" ), 100 );
 
 		// JS inclusion for Javascript code langs
 		add_filter( 'wp_footer', array( $this, "printJS" ), 100 );
 		add_filter( 'wp_footer', array( $this, "printJSForPagesAndPosts" ), 101 );
-
-		parent::__construct( $settings, $owner );
 	}
 
 
@@ -151,6 +151,9 @@ class TitanFrameworkOptionCode extends TitanFrameworkOption {
 	 * @since	1.3
 	 */
 	public function generateCSSCode( $css, $option ) {
+		if ( $this->settings['id'] != $option->settings['id'] ) {
+			return $css;
+		}
 		if ( TitanFrameworkOption::TYPE_META != $option->type ) {
 			$css = $this->getFramework()->getOption( $option->settings['id'] );
 		}
@@ -231,7 +234,7 @@ class TitanFrameworkOptionCode extends TitanFrameworkOption {
 	 * @since	1.3
 	 */
 	public function cleanValueForGetting( $value ) {
-		if ( $this->settings['wpautop'] ) {
+		if ( isset( $this->settings['wpautop'] ) && $this->settings['wpautop'] ) {
 			return wpautop( stripslashes( $value ) );
 		}
 		return stripslashes( $value );

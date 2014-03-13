@@ -32,7 +32,7 @@ class TitanFrameworkCSS {
 		$this->frameworkInstance = $frameworkInstance;
 
 		// Gather all the options
-		add_action( 'tf_create_option', array( $this, 'getOptionsWithCSS' ) );
+		add_action( 'tf_create_option_' . $frameworkInstance->optionNamespace, array( $this, 'getOptionsWithCSS' ) );
 
 		// display our CSS
 		add_action( 'wp_head', array( $this, 'printCSS' ), 99 );
@@ -41,7 +41,9 @@ class TitanFrameworkCSS {
 		// Trigger new compile when theme customizer settings were saved
 		add_action( 'customize_save_after', array( $this, 'generateSaveCSS' ) );
 		// Trigger new compile when admin option settings were saved
-		add_action( 'tf_admin_options_saved', array( $this, 'generateSaveCSS' ) );
+		add_action( 'tf_admin_options_saved_' . $frameworkInstance->optionNamespace, array( $this, 'generateSaveCSS' ) );
+		// Trigger compile when there are no default options saved yet
+		add_action( 'tf_init_no_options_' . $frameworkInstance->optionNamespace, array( $this, 'generateMissingCSS' ) );
 	}
 
 
@@ -80,7 +82,7 @@ class TitanFrameworkCSS {
 	public function enqueueCSS() {
 		$css = get_option( $this->getCSSSlug() );
 		if ( empty( $css ) ) {
-			wp_enqueue_style( 'tf-compiled-option-css', $this->getCSSFileURL(), __FILE__ );
+			wp_enqueue_style( 'tf-compiled-options-' . $this->frameworkInstance->optionNamespace, $this->getCSSFileURL(), __FILE__ );
 		}
 	}
 
@@ -202,12 +204,12 @@ class TitanFrameworkCSS {
 			}
 
 			// Decide whether or not we should continue to generate CSS for this option
-			if ( ! apply_filters( 'tf_continue_generate_css_' . $option->settings['type'], true, $option ) ) {
+			if ( ! apply_filters( 'tf_continue_generate_css_' . $option->settings['type'] . '_' . $option->getOptionNamespace(), true, $option ) ) {
 				continue;
 			}
 
 			// Custom generated CSS
-			$generatedCSS = apply_filters( 'tf_generate_css_' . $option->settings['type'], '', $option );
+			$generatedCSS = apply_filters( 'tf_generate_css_' . $option->settings['type'] . '_' . $option->getOptionNamespace(), '', $option );
 			if ( $generatedCSS ) {
 				try {
 					$testerForValidCSS = $scss->compile( $generatedCSS );
@@ -235,7 +237,7 @@ class TitanFrameworkCSS {
 
 				// In the css parameter, we accept the term `value` as our current value,
 				// translate it into the SaSS variable for the current option
-				$generatedCSS = str_replace( 'value', '$' . $option->settings['id'], $option->settings['css'] );
+				$generatedCSS = str_replace( 'value', '#{$' . $option->settings['id'] . '}', $option->settings['css'] );
 
 				try {
 					$testerForValidCSS = $scss->compile( $generatedCSS );
@@ -277,6 +279,51 @@ class TitanFrameworkCSS {
 			// as an option, we'll load that in wp_head in a hook
 			update_option( $this->getCSSSlug(), $cssString );
 		}
+	}
+
+
+	/**
+	 * When the no options are saved yet (e.g. new install) create a CSS
+	 *
+	 * @return	void
+	 * @since	1.4.1
+	 */
+	public function generateMissingCSS() {
+		add_action( 'admin_init', array( $this, '_generateMissingCSS' ), 1000 );
+	}
+
+
+	/**
+	 * When the no options are saved yet (e.g. new install) create a CSS, called internally
+	 *
+	 * @return	void
+	 * @since	1.4.1
+	 */
+	public function _generateMissingCSS() {
+		// WP_Filesystem is only available in the admin
+		if ( ! is_admin() ) {
+			return;
+		}
+
+		$cssFilename = $this->getCSSFilePath();
+
+		WP_Filesystem();
+		global $wp_filesystem;
+
+		// Check if the file exists
+		if ( $wp_filesystem->exists( $cssFilename ) ) {
+			return;
+		}
+
+		// Verify directory
+		if ( ! $wp_filesystem->is_dir( dirname( $cssFilename ) ) ) {
+			return;
+		}
+		if ( ! $wp_filesystem->is_writable( dirname( $cssFilename ) ) ) {
+			return;
+		}
+
+		$this->generateSaveCSS();
 	}
 
 
