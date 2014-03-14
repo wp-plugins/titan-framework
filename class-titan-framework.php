@@ -4,307 +4,477 @@ if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
 class TitanFramework {
 
-    public $optionNamespace; // Options will be prefixed with this
+	public $optionNamespace; // Options will be prefixed with this
 
-    private $adminPanels = array();
-    private $metaBoxes = array();
-    private $themeCustomizerSections = array();
-    private $widgetAreas = array();
-    private $googleFontsOptions = array();
+	private $adminPanels = array();
+	private $metaBoxes = array();
+	private $themeCustomizerSections = array();
+	private $widgetAreas = array();
+	private $googleFontsOptions = array();
 
-    private static $instances = array();
-    private static $allOptions;
+	// We store option ids which should not be created here (see removeOption)
+	private $optionsToRemove = array();
 
-    // We store
-    public $optionsUsed = array();
+	private static $instances = array();
+	private $allOptionIDs = array();
+	private $allOptions;
 
-    public static function getInstance( $optionNamespace ) {
-        foreach ( self::$instances as $instance ) {
-            if ( $instance->optionNamespace == $optionNamespace ) {
-                return $instance;
-            }
-        }
+	public $cssInstance;
 
-        $newInstance = new TitanFramework( $optionNamespace );
-        self::$instances[] = $newInstance;
-        return $newInstance;
-    }
+	// We store the options (with IDs) here, used for ensuring our serialized option
+	// value doesn't get cluttered with unused options
+	public $optionsUsed = array();
 
-    function __construct( $optionNamespace ) {
-        // Clean namespace
-        $optionNamespace = str_replace( ' ', '-', trim( strtolower( $optionNamespace ) ) );
+	public static function getInstance( $optionNamespace ) {
+		// Clean namespace
+		$optionNamespace = str_replace( ' ', '-', trim( strtolower( $optionNamespace ) ) );
 
-        $this->optionNamespace = $optionNamespace;
+		foreach ( self::$instances as $instance ) {
+			if ( $instance->optionNamespace == $optionNamespace ) {
+				return $instance;
+			}
+		}
 
-        add_action( 'after_setup_theme', array( $this, 'getAllOptions' ), 1 );
-        add_action( 'after_setup_theme', array( $this, 'updateOptionDBListing' ) );
+		$newInstance = new TitanFramework( $optionNamespace );
+		self::$instances[] = $newInstance;
+		return $newInstance;
+	}
 
-        if ( is_admin() ) {
-            add_action( 'after_setup_theme', array( $this, 'updateThemeModListing' ) );
-            add_action( 'after_setup_theme', array( $this, 'updateMetaDbListing' ) );
-        }
+	function __construct( $optionNamespace ) {
+		// Clean namespace
+		$optionNamespace = str_replace( ' ', '-', trim( strtolower( $optionNamespace ) ) );
 
-        add_action( 'admin_enqueue_scripts', array( $this, "loadAdminScripts" ) );
-        add_action( 'wp_enqueue_scripts', array( $this, "loadFrontEndScripts" ) );
-        add_action( 'tf_create_option', array( $this, "rememberGoogleFonts" ) );
-    }
+		$this->optionNamespace = $optionNamespace;
 
-    public function rememberGoogleFonts( $option ) {
-        if ( is_a( $option, 'TitanFrameworkOptionSelectGooglefont' ) ) {
-            $this->googleFontsOptions[] = $option;
-        }
-    }
+		do_action( 'tf_init', $this );
+		do_action( 'tf_init_' . $this->optionNamespace, $this );
 
-    public function loadFrontEndScripts() {
-        foreach ( $this->googleFontsOptions as $googleFontOption ) {
-            $font = $googleFontOption->getValue();
-            if ( empty( $font ) ) {
-                continue;
-            }
-            wp_enqueue_style(
-                'tf-google-webfont-' . strtolower( str_replace( ' ', '-', $font['name'] ) ),
-                TitanFrameworkOptionSelectGooglefont::formScript( $font )
-            );
-        }
-    }
+		$this->cssInstance = new TitanFrameworkCSS( $this );
 
-    public function loadAdminScripts() {
-        wp_enqueue_media();
-        wp_enqueue_script( 'tf-serialize', plugins_url( 'serialize.js', __FILE__ ) );
-        wp_enqueue_style( 'tf-admin-styles', plugins_url( 'admin-styles.css', __FILE__ ) );
-    }
+		add_action( 'after_setup_theme', array( $this, 'getAllOptions' ), 1 );
+		add_action( 'after_setup_theme', array( $this, 'updateOptionDBListing' ) );
 
-    public function getAllOptions() {
-        if ( empty( self::$allOptions ) ) {
-            self::$allOptions = array();
-        }
+		if ( is_admin() ) {
+			add_action( 'after_setup_theme', array( $this, 'updateThemeModListing' ) );
+			add_action( 'after_setup_theme', array( $this, 'updateMetaDbListing' ) );
+			add_action( 'tf_create_option_' . $this->optionNamespace, array( $this, "verifyUniqueIDs" ) );
+		}
 
-        if ( empty( self::$allOptions[$this->optionNamespace] ) ) {
-            self::$allOptions[$this->optionNamespace] = array();
-        } else {
-            return self::$allOptions[$this->optionNamespace];
-        }
+		add_action( 'admin_enqueue_scripts', array( $this, "loadAdminScripts" ) );
+		add_action( 'wp_enqueue_scripts', array( $this, "loadFrontEndScripts" ) );
+		add_action( 'tf_create_option_' . $this->optionNamespace, array( $this, "rememberGoogleFonts" ) );
+		add_action( 'tf_create_option_' . $this->optionNamespace, array( $this, "rememberAllOptions" ) );
+		add_filter( 'tf_create_option_continue_' . $this->optionNamespace, array( $this, "removeChildThemeOptions" ), 10, 2 );
+	}
 
-        // Check if we have options saved already
-        $currentOptions = get_option( $this->optionNamespace . '_options' );
+	/**
+	 * Checks all the ids and shows a warning when multiple occurances of an id is found.
+	 * This is to ensure that there won't be any option conflicts
+	 *
+	 * @param   TitanFrameworkOption $option The object just created
+	 * @return  null
+	 * @since   1.1.1
+	 */
+	public function verifyUniqueIDs( $option ) {
+		if ( empty( $option->settings['id'] ) ) {
+			return;
+		}
 
-        // Put all the available options in our global variable for future checking
-        if ( ! empty( $currentOptions ) && ! count( self::$allOptions[$this->optionNamespace] ) ) {
-            self::$allOptions[$this->optionNamespace] = unserialize( $currentOptions );
-        }
+		if ( in_array( $option->settings['id'], $this->allOptionIDs ) ) {
+			self::displayFrameworkError(
+				sprintf( __( 'All option IDs must be unique. The id %s has been used multiple times.', TF_I18NDOMAIN ),
+					'<code>' . $option->settings['id'] . '</code>'
+				)
+			);
+		} else {
+			$this->allOptionIDs[] = $option->settings['id'];
+		}
+	}
 
-        return self::$allOptions[$this->optionNamespace];
-    }
+	public function rememberGoogleFonts( $option ) {
+		if ( is_a( $option, 'TitanFrameworkOptionSelectGooglefont' ) ) {
+			if ( $option->settings['enqueue'] ) {
+				$this->googleFontsOptions[] = $option;
+			}
+		}
+	}
 
-    public function saveOptions() {
-        update_option( $this->optionNamespace . '_options', serialize( self::$allOptions[$this->optionNamespace] ) );
-        return self::$allOptions[$this->optionNamespace];
-    }
 
-    /*
-     * Cleans up the meta options in the database for our namespace.
-     * Remove unused stuff and add in the default values for new stuff
-     */
-    public function updateMetaDbListing() {
-        // TODO
-    }
+	/**
+	 * Action hook on tf_create_option to remember all the options, used to
+	 * ensure that our serialized option does not get cluttered with unused
+	 * options
+	 *
+	 * @access  public
+	 * @param	TitanFrameworkOption $option The option that was just created
+	 * @return	void
+	 * @since   1.2.1
+	 */
+	public function rememberAllOptions( $option ) {
+		if ( ! empty( $option->settings['id'] ) ) {
+			$this->optionsUsed[ $option->settings['id'] ] = $option;
+		}
+	}
 
-    /*
-     * Cleans up the theme mods in the database for our namespace.
-     * Remove unused stuff and add in the default values for new stuff
-     */
-    public function updateThemeModListing() {
-        $allThemeMods = get_theme_mods();
-        $allThemeModKeys = array_fill_keys( array_keys( $allThemeMods ), null );
+	public function loadFrontEndScripts() {
+		foreach ( $this->googleFontsOptions as $googleFontOption ) {
+			$font = $this->getOption( $googleFontOption->settings['id'] );
+			if ( empty( $font ) ) {
+				continue;
+			}
+			wp_enqueue_style(
+				'tf-google-webfont-' . strtolower( str_replace( ' ', '-', $font['name'] ) ),
+				TitanFrameworkOptionSelectGooglefont::formScript( $font )
+			);
+		}
+	}
 
-        // Check existing theme mods
-        foreach ( $this->themeCustomizerSections as $section ) {
-            foreach ( $section->options as $option ) {
-                if ( ! isset( $allThemeMods[$option->getID()] ) ) {
-                    set_theme_mod( $option->getID(), $option->settings['default'] );
-                }
+	public function loadAdminScripts() {
+		wp_enqueue_media();
+		wp_enqueue_script( 'tf-serialize', TitanFramework::getURL( 'js/serialize.js', __FILE__ ) );
+		wp_enqueue_script( 'tf-styling', TitanFramework::getURL( 'js/admin-styling.js', __FILE__ ) );
+		wp_enqueue_style( 'tf-admin-styles', TitanFramework::getURL( 'css/admin-styles.css', __FILE__ ) );
+		wp_enqueue_style( 'tf-font-awesome', TitanFramework::getURL( 'css/font-awesome/css/font-awesome.min.css', __FILE__ ) );
+	}
 
-                unset( $allThemeModKeys[$option->getID()] );
-            }
-        }
+	public function getAllOptions() {
+		if ( empty( $this->allOptions ) ) {
+			$this->allOptions = array();
+		}
 
-        // Remove all unused theme mods
-        if ( count( $allThemeModKeys ) ) {
-            foreach ( $allThemeModKeys as $optionName => $dummy ) {
-                // Only remove theme mods that the framework created
-                if ( stripos( $optionName, $this->optionNamespace . '_' ) === 0 ) {
-                    remove_theme_mod( $optionName );
-                }
-            }
-        }
-    }
+		if ( empty( $this->allOptions[$this->optionNamespace] ) ) {
+			$this->allOptions[$this->optionNamespace] = array();
+		} else {
+			return $this->allOptions[$this->optionNamespace];
+		}
 
-    /*
-     * Cleans up the options present in the database for our namespace.
-     * Remove unused stuff and add in the default values for new stuff
-     */
-    public function updateOptionDBListing() {
-        // Get also a list of all option keys
-        $allOptionKeys = array_fill_keys( array_keys( self::$allOptions[$this->optionNamespace] ), null );
+		// Check if we have options saved already
+		$currentOptions = get_option( $this->optionNamespace . '_options' );
 
-        // Check whether options have changed / added
-        $changed = false;
-        foreach ( $this->adminPanels as $panel ) {
-            // Check existing options
-            foreach ( $panel->options as $option ) {
-                if ( empty( $option->settings['id'] ) ) {
-                    continue;
-                }
-                if ( ! isset( self::$allOptions[$this->optionNamespace][$option->settings['id']] ) ) {
-                    self::$allOptions[$this->optionNamespace][$option->settings['id']] = $option->settings['default'];
-                    $changed = true;
-                }
-                unset( $allOptionKeys[$option->settings['id']] );
+		// First time run, this action hook can be used to trigger something
+		if ( $currentOptions === false ) {
+			do_action( 'tf_init_no_options_' . $this->optionNamespace );
+		}
 
-                // Clean the value for retrieval
-                self::$allOptions[$this->optionNamespace][$option->settings['id']] =
-                    $option->cleanValueForGetting( self::$allOptions[$this->optionNamespace][$option->settings['id']] );
-            }
-            // Check existing options
-            foreach ( $panel->tabs as $tab ) {
-                foreach ( $tab->options as $option ) {
-                    if ( empty( $option->settings['id'] ) ) {
-                        continue;
-                    }
-                    if ( ! isset( self::$allOptions[$this->optionNamespace][$option->settings['id']] ) ) {
-                        self::$allOptions[$this->optionNamespace][$option->settings['id']] = $option->settings['default'];
-                        $changed = true;
-                    }
-                    unset( $allOptionKeys[$option->settings['id']] );
+		// Put all the available options in our global variable for future checking
+		if ( ! empty( $currentOptions ) && ! count( $this->allOptions[$this->optionNamespace] ) ) {
+			$this->allOptions[$this->optionNamespace] = unserialize( $currentOptions );
+		}
 
-                    // Clean the value for retrieval
-                    self::$allOptions[$this->optionNamespace][$option->settings['id']] =
-                        $option->cleanValueForGetting( self::$allOptions[$this->optionNamespace][$option->settings['id']] );
-                }
-            }
-        }
+		return $this->allOptions[$this->optionNamespace];
+	}
 
-        // Remove all unused keys
-        if ( count( $allOptionKeys ) ) {
-            foreach ( $allOptionKeys as $optionName => $dummy ) {
-                unset( self::$allOptions[$this->optionNamespace][$optionName] );
-            }
-            $changed = true;
-        }
+	public function saveOptions() {
+		update_option( $this->optionNamespace . '_options', serialize( $this->allOptions[$this->optionNamespace] ) );
+		return $this->allOptions[$this->optionNamespace];
+	}
 
-        // New options have been added, save the default values
-        if ( $changed ) {
-            update_option( $this->optionNamespace . '_options', serialize( self::$allOptions[$this->optionNamespace] ) );
-        }
-    }
+	/*
+	 * Cleans up the meta options in the database for our namespace.
+	 * Remove unused stuff and add in the default values for new stuff
+	 */
+	public function updateMetaDbListing() {
+		// TODO
+	}
 
-    public function createAdminPanel( $settings ) {
-        $obj = new TitanFrameworkAdminPanel( $settings, $this );
-        $this->adminPanels[] = $obj;
-        return $obj;
-    }
+	/*
+	 * Cleans up the theme mods in the database for our namespace.
+	 * Remove unused stuff and add in the default values for new stuff
+	 */
+	public function updateThemeModListing() {
+		$allThemeMods = get_theme_mods();
 
-    public function createMetaBox( $settings ) {
-        $obj = new TitanFrameworkMetaBox( $settings, $this );
-        $this->metaBoxes[] = $obj;
-        return $obj;
-    }
+		// For fresh installs there won't be any theme mods yet
+		if ( $allThemeMods === false ) {
+			$allThemeMods = array();
+		}
 
-    public function createThemeCustomizerSection( $settings ) {
-        $obj = new TitanFrameworkThemeCustomizerSection( $settings, $this );
-        $this->themeCustomizerSections[] = $obj;
-        return $obj;
-    }
+		$allThemeModKeys = array_fill_keys( array_keys( $allThemeMods ), null );
 
-    public function getOption( $optionName, $postID = null ) {
-        $value = null;
+		// Check existing theme mods
+		foreach ( $this->themeCustomizerSections as $section ) {
+			foreach ( $section->options as $option ) {
+				if ( ! isset( $allThemeMods[$option->getID()] ) ) {
+					set_theme_mod( $option->getID(), $option->settings['default'] );
+				}
 
-        if ( empty( $postID ) ) {
-            // option
+				unset( $allThemeModKeys[$option->getID()] );
+			}
+		}
 
-            if ( ! is_array( self::$allOptions ) ) {
-                // this is blank if called too early. getOption should be called inside a hook or template
-                self::displayFrameworkError( sprintf( __( 'Wrong usage of %s, this should be called inside a hook or from within a theme file.', TF_I18NDOMAIN ), '<code>getOption</code>' ) );
-                return '';
-            }
+		// Remove all unused theme mods
+		if ( count( $allThemeModKeys ) ) {
+			foreach ( $allThemeModKeys as $optionName => $dummy ) {
+				// Only remove theme mods that the framework created
+				if ( stripos( $optionName, $this->optionNamespace . '_' ) === 0 ) {
+					remove_theme_mod( $optionName );
+				}
+			}
+		}
+	}
 
-            if ( array_key_exists( $optionName, self::$allOptions[$this->optionNamespace] ) ) {
-                $value = self::$allOptions[$this->optionNamespace][$optionName];
-            } else {
-                // customizer
-                $value = get_theme_mod( $this->optionNamespace . '_' . $optionName );
-            }
-        } else {
-            // meta
-            $value = get_post_meta( $postID, $this->optionNamespace . '_' . $optionName, true );
-        }
+	/*
+	 * Cleans up the options present in the database for our namespace.
+	 * Remove unused stuff and add in the default values for new stuff
+	 */
+	public function updateOptionDBListing() {
+		// Get also a list of all option keys
+		$allOptionKeys = array_fill_keys( array_keys( $this->allOptions[$this->optionNamespace] ), null );
 
-        // Apply cleaning method for the value (for serialized data, slashes, etc)
-        if ( $value != null ) {
-            if ( ! empty( $this->optionsUsed[$optionName] ) ) {
-                $value = $this->optionsUsed[$optionName]->cleanValueForGetting( $value );
-            }
-        }
-        return $value;
-    }
+		// Check whether options have changed / added
+		$changed = false;
+		foreach ( $this->adminPanels as $panel ) {
+			// Check existing options
+			foreach ( $panel->options as $option ) {
+				if ( empty( $option->settings['id'] ) ) {
+					continue;
+				}
+				if ( ! isset( $this->allOptions[$this->optionNamespace][$option->settings['id']] ) ) {
+					$this->allOptions[$this->optionNamespace][$option->settings['id']] = $option->settings['default'];
+					$changed = true;
+				}
+				unset( $allOptionKeys[$option->settings['id']] );
 
-    public function setOption( $optionName, $value, $postID = null ) {
-        // Apply cleaning method for the value (for serialized data, slashes, etc)
-        if ( ! empty( $this->optionsUsed[$optionName] ) ) {
-            $value = $this->optionsUsed[$optionName]->cleanValueForSaving( $value );
-        }
+				// Clean the value for retrieval
+				$this->allOptions[$this->optionNamespace][$option->settings['id']] =
+					$option->cleanValueForGetting( $this->allOptions[$this->optionNamespace][$option->settings['id']] );
+			}
+			// Check existing options
+			foreach ( $panel->tabs as $tab ) {
+				foreach ( $tab->options as $option ) {
+					if ( empty( $option->settings['id'] ) ) {
+						continue;
+					}
+					if ( ! isset( $this->allOptions[$this->optionNamespace][$option->settings['id']] ) ) {
+						$this->allOptions[$this->optionNamespace][$option->settings['id']] = $option->settings['default'];
+						$changed = true;
+					}
+					unset( $allOptionKeys[$option->settings['id']] );
 
-        if ( empty( $postID ) ) {
-            // option
+					// Clean the value for retrieval
+					$this->allOptions[$this->optionNamespace][$option->settings['id']] =
+						$option->cleanValueForGetting( $this->allOptions[$this->optionNamespace][$option->settings['id']] );
+				}
+			}
+		}
 
-            if ( ! is_array( self::$allOptions ) ) {
-                // this is blank if called too early. getOption should be called inside a hook or template
-                self::displayFrameworkError( sprintf( __( 'Wrong usage of %s, this should be called inside a hook or from within a theme file.', TF_I18NDOMAIN ), '<code>setOption</code>' ) );
-                return '';
-            }
+		// Remove all unused keys
+		if ( count( $allOptionKeys ) ) {
+			foreach ( $allOptionKeys as $optionName => $dummy ) {
+				unset( $this->allOptions[$this->optionNamespace][$optionName] );
+			}
+			$changed = true;
+		}
 
-            if ( array_key_exists( $optionName, self::$allOptions[$this->optionNamespace] ) ) {
-                self::$allOptions[$this->optionNamespace][$optionName] = $value;
-            } else {
-                // customizer
-                set_theme_mod( $this->optionNamespace . '_' . $optionName, $value );
-            }
-        } else {
-            // meta
-            return update_post_meta( $postID, $this->optionNamespace . '_' . $optionName, $value );
-        }
-        return $value;
-    }
+		// New options have been added, save the default values
+		if ( $changed ) {
+			update_option( $this->optionNamespace . '_options', serialize( $this->allOptions[$this->optionNamespace] ) );
+		}
+	}
 
-    public function createWidgetArea( $settings ) {
-        $obj = new TitanFrameworkWidgetArea( $settings, $this );
-        $this->widgetAreas[] = $obj;
-        return $obj;
-    }
+	public function createAdminPanel( $settings ) {
+		$obj = new TitanFrameworkAdminPanel( $settings, $this );
+		$this->adminPanels[] = $obj;
+		return $obj;
+	}
 
-    public static function displayFrameworkError( $message, $errorObject = null ) {
-        // Clean up the debug object for display. e.g. If this is a setting, we can have lots of blank values
-        if ( is_array( $errorObject ) ) {
-            foreach ( $errorObject as $key => $val ) {
-                if ( $val === '' ) {
-                    unset( $errorObject[$key] );
-                }
-            }
-        }
+	public function createMetaBox( $settings ) {
+		$obj = new TitanFrameworkMetaBox( $settings, $this );
+		$this->metaBoxes[] = $obj;
+		return $obj;
+	}
 
-        // Display an error message
-        ?>
-        <div style='margin: 20px'><strong><?php echo TF_NAME ?> Error:</strong>
-            <?php echo $message ?>
-            <?php
-            if ( ! empty( $errorObject ) ):
-                ?>
-                <pre><code style="display: inline-block; padding: 10px"><?php echo print_r( $errorObject, true ) ?></code></pre>
-                <?php
-            endif;
-            ?>
-        </div>
-        <?php
-    }
+	public function createThemeCustomizerSection( $settings ) {
+		$obj = new TitanFrameworkThemeCustomizerSection( $settings, $this );
+		$this->themeCustomizerSections[] = $obj;
+		return $obj;
+	}
+
+
+	/**
+	 * A function available ONLY to CHILD themes to stop the creation of options
+	 * created by the PARENT theme.
+	 *
+	 * @access  public
+	 * @param	string $optionName The id of the option to remove / stop from being created
+	 * @return  void
+	 * @since   1.2.1
+	 */
+	public function removeOption( $optionName ) {
+		$this->optionsToRemove[] = $optionName;
+	}
+
+
+	/**
+	 * Hook to the tf_create_option_continue filter, to check whether or not to continue
+	 * adding an option (if the option id was used in $titan->removeOption).
+	 *
+	 * @access  public
+	 * @param	boolean $continueCreating If true, the option will be created
+	 * @param	array $optionSettings The settings for the option to be created
+	 * @return  boolean If true, continue with creating the option. False to stop it.
+	 * @since   1.2.1
+	 */
+	public function removeChildThemeOptions( $continueCreating, $optionSettings ) {
+		if ( ! count( $this->optionsToRemove ) ) {
+			return $continueCreating;
+		}
+		if ( empty( $optionSettings['id'] ) ) {
+			return $continueCreating;
+		}
+		if ( in_array( $optionSettings['id'], $this->optionsToRemove ) ) {
+			return false;
+		}
+		return $continueCreating;
+	}
+
+	public function getOption( $optionName, $postID = null ) {
+		$value = null;
+
+		// Get the option value
+		if ( array_key_exists( $optionName, $this->optionsUsed ) ) {
+			$option = $this->optionsUsed[ $optionName ];
+
+			// Admin page options
+			if ( $option->type == TitanFrameworkOption::TYPE_ADMIN ) {
+
+				// this is blank if called too early. getOption should be called inside a hook or template
+				if ( ! is_array( $this->allOptions ) ) {
+					self::displayFrameworkError( sprintf( __( 'Wrong usage of %s, this should be called inside a hook or from within a theme file.', TF_I18NDOMAIN ), '<code>getOption</code>' ) );
+					return null;
+				}
+
+				$value = $this->allOptions[ $this->optionNamespace ][ $optionName ];
+
+
+			// Meta box options
+			} else if ( $option->type == TitanFrameworkOption::TYPE_META ) {
+
+				// If no $postID is given, try and get it if we are in a loop
+				if ( empty( $postID ) && ! is_admin() ) {
+					if ( get_post() != null ) {
+						$postID = get_the_ID();
+					}
+				}
+
+				$value = get_post_meta( $postID, $this->optionNamespace . '_' . $optionName, true );
+
+
+			// Theme customizer options
+			} else if ( $option->type == TitanFrameworkOption::TYPE_CUSTOMIZER ) {
+				$value = get_theme_mod( $this->optionNamespace . '_' . $optionName );
+
+			}
+		}
+
+		// Apply cleaning method for the value (for serialized data, slashes, etc)
+		if ( $value !== null ) {
+			if ( ! empty( $this->optionsUsed[$optionName] ) ) {
+				$value = $this->optionsUsed[$optionName]->cleanValueForGetting( $value );
+			}
+		}
+		return $value;
+	}
+
+	public function setOption( $optionName, $value, $postID = null ) {
+		// Apply cleaning method for the value (for serialized data, slashes, etc)
+		if ( ! empty( $this->optionsUsed[$optionName] ) ) {
+			$value = $this->optionsUsed[$optionName]->cleanValueForSaving( $value );
+		}
+
+		if ( empty( $postID ) ) {
+			// option
+
+			if ( ! is_array( $this->allOptions ) ) {
+				// this is blank if called too early. getOption should be called inside a hook or template
+				self::displayFrameworkError( sprintf( __( 'Wrong usage of %s, this should be called inside a hook or from within a theme file.', TF_I18NDOMAIN ), '<code>setOption</code>' ) );
+				return '';
+			}
+
+			if ( array_key_exists( $optionName, $this->allOptions[$this->optionNamespace] ) ) {
+				$this->allOptions[$this->optionNamespace][$optionName] = $value;
+			} else {
+				// customizer
+				set_theme_mod( $this->optionNamespace . '_' . $optionName, $value );
+			}
+		} else {
+			// meta
+			return update_post_meta( $postID, $this->optionNamespace . '_' . $optionName, $value );
+		}
+		return $value;
+	}
+
+	public function createWidgetArea( $settings ) {
+		$obj = new TitanFrameworkWidgetArea( $settings, $this );
+		$this->widgetAreas[] = $obj;
+		return $obj;
+	}
+
+	public function createCSS( $CSSString ) {
+		$this->cssInstance->addCSS( $CSSString );
+	}
+
+	public function createShortcode( $settings ) {
+		do_action( 'tf_create_shortcode', $settings );
+		do_action( 'tf_create_shortcode_' . $this->optionNamespace, $settings );
+	}
+
+	public static function displayFrameworkError( $message, $errorObject = null ) {
+		// Clean up the debug object for display. e.g. If this is a setting, we can have lots of blank values
+		if ( is_array( $errorObject ) ) {
+			foreach ( $errorObject as $key => $val ) {
+				if ( $val === '' ) {
+					unset( $errorObject[$key] );
+				}
+			}
+		}
+
+		// Display an error message
+		?>
+		<div style='margin: 20px'><strong><?php echo TF_NAME ?> Error:</strong>
+			<?php echo $message ?>
+			<?php
+			if ( ! empty( $errorObject ) ):
+				?>
+				<pre><code style="display: inline-block; padding: 10px"><?php echo print_r( $errorObject, true ) ?></code></pre>
+				<?php
+			endif;
+			?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Acts the same way as plugins_url( 'script', __FILE__ ) but returns then correct url
+	 * when called from inside a theme.
+	 *
+	 * @param   string $script the script to get the url to, relative to $file
+	 * @param   string $file the current file, should be __FILE__
+	 * @return  string the url to $script
+	 * @since   1.1.2
+	 */
+	public static function getURL( $script, $file ) {
+		$parentTheme = trailingslashit( get_template_directory() );
+		$childTheme = trailingslashit( get_stylesheet_directory() );
+		$plugin = trailingslashit( dirname( $file ) );
+
+		// framework is in a parent theme
+		if ( stripos( $file, $parentTheme ) !== false ) {
+			$dir = trailingslashit( dirname( str_replace( $parentTheme, '', $file ) ) );
+			if ( $dir == './' ) {
+				$dir = '';
+			}
+			return trailingslashit( get_template_directory_uri() ) . $dir . $script;
+		// framework is in a child theme
+		} else if ( stripos( $file, $childTheme ) !== false ) {
+			$dir = trailingslashit( dirname( str_replace( $childTheme, '', $file ) ) );
+			if ( $dir == './' ) {
+				$dir = '';
+			}
+			return trailingslashit( get_stylesheet_directory_uri() ) . $dir . $script;
+		}
+		// framework is a or in a plugin
+		return plugins_url( $script, $file );
+	}
 }
 ?>
