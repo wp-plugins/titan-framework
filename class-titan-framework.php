@@ -129,12 +129,21 @@ class TitanFramework {
 		}
 	}
 
-	public function loadAdminScripts() {
-		wp_enqueue_media();
-		wp_enqueue_script( 'tf-serialize', TitanFramework::getURL( 'js/serialize.js', __FILE__ ) );
-		wp_enqueue_script( 'tf-styling', TitanFramework::getURL( 'js/admin-styling.js', __FILE__ ) );
-		wp_enqueue_style( 'tf-admin-styles', TitanFramework::getURL( 'css/admin-styles.css', __FILE__ ) );
-		wp_enqueue_style( 'tf-font-awesome', TitanFramework::getURL( 'css/font-awesome/css/font-awesome.min.css', __FILE__ ) );
+	public function loadAdminScripts( $hook ) {
+		// Get all options panel IDs
+		$panel_ids = array();
+		foreach ( $this->adminPanels as $admin_panel ) {
+			$panel_ids[] = $admin_panel->panelID;
+		}
+
+		// Only enqueue scripts if we're on a Titan options page
+		if ( in_array( $hook, $panel_ids ) ) {
+			wp_enqueue_media();
+			wp_enqueue_script( 'tf-serialize', TitanFramework::getURL( 'js/serialize.js', __FILE__ ) );
+			wp_enqueue_script( 'tf-styling', TitanFramework::getURL( 'js/admin-styling.js', __FILE__ ) );
+			wp_enqueue_style( 'tf-admin-styles', TitanFramework::getURL( 'css/admin-styles.css', __FILE__ ) );
+			wp_enqueue_style( 'tf-font-awesome', TitanFramework::getURL( 'css/font-awesome/css/font-awesome.min.css', __FILE__ ) );
+		}
 	}
 
 	public function getAllOptions() {
@@ -219,7 +228,10 @@ class TitanFramework {
 	 */
 	public function updateOptionDBListing() {
 		// Get also a list of all option keys
-		$allOptionKeys = array_fill_keys( array_keys( $this->allOptions[$this->optionNamespace] ), null );
+		$allOptionKeys = array();
+		if ( ! empty( $this->allOptions[$this->optionNamespace] ) ) {
+			$allOptionKeys = array_fill_keys( array_keys( $this->allOptions[ $this->optionNamespace ] ), null );
+		}
 
 		// Check whether options have changed / added
 		$changed = false;
@@ -458,6 +470,12 @@ class TitanFramework {
 		$childTheme = trailingslashit( get_stylesheet_directory() );
 		$plugin = trailingslashit( dirname( $file ) );
 
+		// Windows sometimes mixes up forward and back slashes, ensure forward slash for
+		// correct URL output
+		$parentTheme = str_replace( '\\', '/', $parentTheme );
+		$childTheme = str_replace( '\\', '/', $childTheme );
+		$file = str_replace( '\\', '/', $file );
+
 		// framework is in a parent theme
 		if ( stripos( $file, $parentTheme ) !== false ) {
 			$dir = trailingslashit( dirname( str_replace( $parentTheme, '', $file ) ) );
@@ -477,4 +495,3 @@ class TitanFramework {
 		return plugins_url( $script, $file );
 	}
 }
-?>
