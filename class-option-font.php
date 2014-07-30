@@ -28,6 +28,10 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		'show_text_shadow' => true,
 		'show_preview' => true,
 		'enqueue' => true,
+		'preview_text' => '',
+        'include_fonts' => '', // A regex string or array of regex strings to match font names to include.
+		'show_websafe_fonts' => true,
+		'show_google_fonts' => true,
 	);
 
 	// Default style options
@@ -180,8 +184,26 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 
 		$skip = array( 'dark', 'font-type', 'text-shadow-distance', 'text-shadow-blur', 'text-shadow-color', 'text-shadow-opacity' );
 
+        // If the value is blank, use the defaults
+        if ( empty( $value ) ) {
+    		$value = $this->getValue();
+    		if ( is_serialized( $value ) ) {
+    			$value = unserialize( $value );
+    		}
+    		if ( ! is_array( $value ) ) {
+    			$value = array();
+    		}
+    		$value = array_merge( self::$defaultStyling, $value );
+        }
+
 		foreach ( $value as $key => $val ) {
+			// Force skip other keys, those are processed under another key, e.g. text-shadow-distance is
+			// used by text-shadow-location
 			if ( in_array( $key, $skip ) ) {
+				continue;
+			}
+			// Don't include keys which are not in the default styles
+			if ( ! in_array( $key, array_keys( self::$defaultStyling ) ) ) {
 				continue;
 			}
 
@@ -295,7 +317,6 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 
 			// Initialize color pickers
 			$('.tf-font .tf-font-sel-color, .tf-font .tf-font-sel-shadow-color').wpColorPicker({
-				palettes: false,
 				change: function ( event, ui ) {
 					// update the preview, but throttle it to prevent fast loading
 					if ( _tf_select_font_throttle != null ) {
@@ -391,7 +412,8 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 				'text-shadow-blur': $container.find(".tf-font-sel-blur").val(),
 				'text-shadow-color': $container.find(".tf-font-sel-shadow-color").val(),
 				'text-shadow-opacity': $container.find(".tf-font-sel-opacity").val(),
-				'dark': $container.find(".tf-font-sel-dark").val()
+				'dark': $container.find(".tf-font-sel-dark").val(),
+				'text': $container.find("iframe").attr('data-preview-text')
 			}
 
 			// Update preview
@@ -442,44 +464,81 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		<label <?php echo $visibilityAttrs ?>>
 			Font Family
 			<select class='tf-font-sel-family'>
-			    <optgroup label="Web Safe Fonts" class='safe'>
-					<?php
-					$options = array(
-						'Arial, Helvetica, sans-serif' => 'Arial',
-						'"Arial Black", Gadget, sans-serif' => 'Arial Black',
-						'"Comic Sans MS", cursive, sans-serif' => 'Comic Sans',
-						'"Courier New", Courier, monospace' => 'Courier New',
-						'Georgia, serif' => 'Geogia',
-						'Impact, Charcoal, sans-serif' => 'Impact',
-						'"Lucida Console", Monaco, monospace' => 'Lucida Console',
- 						'"Lucida Sans Unicode", "Lucida Grande", sans-serif' => 'Lucida Sans',
-						'"Palatino Linotype", "Book Antiqua", Palatino, serif' => 'Palatino',
-						'Tahoma, Geneva, sans-serif' => 'Tahoma',
-						'"Times New Roman", Times, serif' => 'Times New Roman',
-						'"Trebuchet MS", Helvetica, sans-serif' => 'Trebuchet',
-						'Verdana, Geneva, sans-serif' => 'Verdana',
-					);
-					foreach ( $options as $family => $label ) {
-						printf( "<option value='%s'%s>%s</option>",
-							$family,
-							selected( $value['font-family'], $family, false ),
-							$label
-						);
-					}
+				<?php
+				if ( $this->settings['show_websafe_fonts'] ) {
 					?>
-				</optgroup>
-			    <optgroup label="Google WebFonts" class='google'>
-					<?php
-					$allFonts = titan_get_googlefonts();
-					foreach ( $allFonts as $key => $fontStuff ) {
-						printf( "<option value='%s'%s>%s</option>",
-							esc_attr( $fontStuff['name'] ),
-							selected( $value['font-family'], $fontStuff['name'], false ),
-							$fontStuff['name']
+				    <optgroup label="Web Safe Fonts" class='safe'>
+						<?php
+						$options = array(
+							'Arial, Helvetica, sans-serif' => 'Arial',
+							'"Arial Black", Gadget, sans-serif' => 'Arial Black',
+							'"Comic Sans MS", cursive, sans-serif' => 'Comic Sans',
+							'"Courier New", Courier, monospace' => 'Courier New',
+							'Georgia, serif' => 'Geogia',
+							'Impact, Charcoal, sans-serif' => 'Impact',
+							'"Lucida Console", Monaco, monospace' => 'Lucida Console',
+	 						'"Lucida Sans Unicode", "Lucida Grande", sans-serif' => 'Lucida Sans',
+							'"Palatino Linotype", "Book Antiqua", Palatino, serif' => 'Palatino',
+							'Tahoma, Geneva, sans-serif' => 'Tahoma',
+							'"Times New Roman", Times, serif' => 'Times New Roman',
+							'"Trebuchet MS", Helvetica, sans-serif' => 'Trebuchet',
+							'Verdana, Geneva, sans-serif' => 'Verdana',
 						);
-					}
+						foreach ( $options as $family => $label ) {
+							printf( "<option value='%s'%s>%s</option>",
+								$family,
+								selected( $value['font-family'], $family, false ),
+								$label
+							);
+						}
+						?>
+					</optgroup>
+					<?php
+				}
+
+				if ( $this->settings['show_google_fonts'] ) {
 					?>
-				</optgroup>
+				    <optgroup label="Google WebFonts" class='google'>
+						<?php
+						$allFonts = titan_get_googlefonts();
+						foreach ( $allFonts as $key => $fontStuff ) {
+
+	                        // Show only the include_fonts (font names) if provided, uses regex
+	                        if ( ! empty( $this->settings['include_fonts'] ) ) {
+	                            if ( is_array( $this->settings['include_fonts'] ) ) {
+	                                $fontNameMatch = false;
+	                                foreach ( $this->settings['include_fonts'] as $fontNamePattern ) {
+	                                    if ( ! is_string( $fontNamePattern ) ) {
+	                                        continue;
+	                                    }
+	                                    $fontNamePattern = '/' . trim( $fontNamePattern, '/' ) . '/';
+	                                    if ( preg_match( $fontNamePattern . 'i', $fontStuff['name'] ) ) {
+	                                        $fontNameMatch = true;
+	                                        break;
+	                                    }
+	                                }
+	                                if ( ! $fontNameMatch ) {
+	                                    continue;
+	                                }
+	                            } else if ( is_string( $this->settings['include_fonts'] ) ) {
+	                                $fontNamePattern = '/' . trim( $this->settings['include_fonts'], '/' ) . '/';
+	                                if ( ! preg_match( $fontNamePattern . 'i', $fontStuff['name'] ) ) {
+	                                    continue;
+	                                }
+	                            }
+	                        }
+
+							printf( "<option value='%s'%s>%s</option>",
+								esc_attr( $fontStuff['name'] ),
+								selected( $value['font-family'], $fontStuff['name'], false ),
+								$fontStuff['name']
+							);
+						}
+						?>
+					</optgroup>
+					<?php
+				}
+				?>
 			</select>
 		</label>
 		<?php
@@ -494,7 +553,15 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 			Color
 			<input class='tf-font-sel-color' type="text" value="<?php echo esc_attr( $value['color'] ) ?>"  data-default-color="<?php echo esc_attr( $value['color'] ) ?>"/>
 		</label>
-		<label>
+		<?php
+
+
+		$visibilityAttrs = '';
+		if ( ! $this->settings['show_font_size'] ) {
+			$visibilityAttrs = "data-visible='false' style='display: none'";
+		}
+		?>
+		<label <?php echo $visibilityAttrs ?>>
 			Font Size
 			<select class='tf-font-sel-size'>
 				<?php
@@ -727,7 +794,7 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		}
 		?>
 		<div <?php echo $visibilityAttrs ?>>
-			<iframe></iframe>
+			<iframe data-preview-text='<?php echo esc_attr( $this->settings['preview_text'] ) ?>'></iframe>
 			<i class='fa fa-adjust btn-dark'></i>
 			<input type='hidden' class='tf-font-sel-dark' value='<?php echo esc_attr( $value['dark'] ? 'dark' : '' ) ?>'/>
 		</div>
@@ -755,6 +822,9 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 	 * @since	1.4
 	 */
 	public function cleanValueForSaving( $value ) {
+		if ( is_array( $value ) ) {
+			$value = serialize( $value );
+		}
 		return stripslashes( $value );
 	}
 
@@ -895,7 +965,7 @@ function registerTitanFrameworkOptionFontControl() {
 
 
 			$visibilityAttrs = '';
-			if ( ! $this->params['show_color'] ) {
+			if ( ! $this->params['show_font_size'] ) {
 				$visibilityAttrs = "data-visible='false' style='display: none'";
 			}
 			?>

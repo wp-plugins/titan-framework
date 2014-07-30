@@ -81,7 +81,9 @@ class TitanFrameworkCSS {
 	 */
 	public function enqueueCSS() {
 		$css = get_option( $this->getCSSSlug() );
-		if ( empty( $css ) ) {
+		$generatedCss = $this->generateCSS();
+
+		if ( ! empty( $generatedCss ) && empty( $css ) ) {
 			wp_enqueue_style( 'tf-compiled-options-' . $this->frameworkInstance->optionNamespace, $this->getCSSFileURL(), __FILE__ );
 		}
 	}
@@ -95,7 +97,7 @@ class TitanFrameworkCSS {
 	 * @since   1.2
 	 */
 	public function getOptionsWithCSS( $option ) {
-		if ( !empty( $option->settings['id'] ) ) {
+		if ( ! empty( $option->settings['id'] ) ) {
 			$this->allOptionsWithIDs[] = $option;
 		}
 	}
@@ -253,8 +255,10 @@ class TitanFrameworkCSS {
 		}
 
 		// Compile as SCSS & minify
-		$scss->setFormatter( self::SCSS_COMPRESSION );
-		$cssString = $scss->compile( $cssString );
+		if ( ! empty( $cssString ) ) {
+			$scss->setFormatter( self::SCSS_COMPRESSION );
+			$cssString = $scss->compile( $cssString );
+		}
 
 		return $cssString;
 	}
@@ -269,6 +273,10 @@ class TitanFrameworkCSS {
 	 */
 	public function generateSaveCSS() {
 		$cssString = $this->generateCSS();
+
+		if ( empty( $cssString ) ) {
+			return;
+		}
 
 		// Save our css
 		if ( $this->writeCSS( $cssString, $this->getCSSFilePath() ) ) {
@@ -359,4 +367,3 @@ class TitanFrameworkCSS {
 	}
 
 }
-?>
