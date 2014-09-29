@@ -7,9 +7,6 @@ Titan Framework
 
 Titan Framework allows theme and plugin developers to create a admin pages, options, meta boxes, and theme customizer options with just a few simple lines of code.
 
-#### Updates
-* Version 1.5.2 has been pushed out to the WP.org plugin repository!
-
 #### Features
 * Makes development unbelievably easy
 * Built with optimization in mind

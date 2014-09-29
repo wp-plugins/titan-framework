@@ -54,6 +54,23 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		'dark' => '', // only used to toggle the preview background
 	);
 
+	// The list of web safe fonts
+	public static $webSafeFonts = array(
+		'Arial, Helvetica, sans-serif' => 'Arial',
+		'"Arial Black", Gadget, sans-serif' => 'Arial Black',
+		'"Comic Sans MS", cursive, sans-serif' => 'Comic Sans',
+		'"Courier New", Courier, monospace' => 'Courier New',
+		'Georgia, serif' => 'Geogia',
+		'Impact, Charcoal, sans-serif' => 'Impact',
+		'"Lucida Console", Monaco, monospace' => 'Lucida Console',
+		'"Lucida Sans Unicode", "Lucida Grande", sans-serif' => 'Lucida Sans',
+		'"Palatino Linotype", "Book Antiqua", Palatino, serif' => 'Palatino',
+		'Tahoma, Geneva, sans-serif' => 'Tahoma',
+		'"Times New Roman", Times, serif' => 'Times New Roman',
+		'"Trebuchet MS", Helvetica, sans-serif' => 'Trebuchet',
+		'Verdana, Geneva, sans-serif' => 'Verdana',
+	);
+
 	// Holds all the Google Fonts for enqueuing
 	private static $googleFontsOptions = array();
 
@@ -111,7 +128,7 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		foreach ( self::$googleFontsOptions as $option ) {
 			$fontValue = $option->getFramework()->getOption( $option->settings['id'] );
 
-			if ( empty( $fontValue['font-type'] ) ) {
+			if ( empty( $fontValue['font-family'] ) ) {
 				continue;
 			}
 
@@ -262,8 +279,16 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 
 		// Create the entire CSS for the font, this should just be used to replace the `value` variable
 		$cssVariables = '';
-		$cssVariableArray = array( 'font-family', 'color', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing',
-		'text-transform', 'font-variant', 'text-shadow' );
+		$cssChecking = array( 'font_family', 'color', 'font_size', 'font_weight', 'font_style', 'line_height', 'letter_spacing', 'text_transform', 'font_variant', 'text_shadow' );
+
+		//Enter values that are not marked as false.
+		foreach ( $cssChecking as $subject ) {
+			if ( $option->settings['show_'.$subject] ) {
+				$cssVariableArray[] = str_replace( "_", "-", $subject );
+			}
+		}
+
+		//Now, integrate these values with their corresponding keys
 		foreach ( $cssVariableArray as $param ) {
 			$cssVariables .= $param . ": \$" . $option->settings['id'] . "-" . $param . ";\n";
 		}
@@ -417,7 +442,7 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 			}
 
 			// Update preview
-			if ( $container.find('iframe').is(':visible') ) {
+			if ( $container.find('iframe').is(':not([data-visible=false])') ) {
 				$container.find('iframe').attr('src', '<?php echo TitanFramework::getURL( 'iframe-font-preview.php?', __FILE__ ) ?>' + $.param(params) );
 			}
 
@@ -469,22 +494,7 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 					?>
 				    <optgroup label="Web Safe Fonts" class='safe'>
 						<?php
-						$options = array(
-							'Arial, Helvetica, sans-serif' => 'Arial',
-							'"Arial Black", Gadget, sans-serif' => 'Arial Black',
-							'"Comic Sans MS", cursive, sans-serif' => 'Comic Sans',
-							'"Courier New", Courier, monospace' => 'Courier New',
-							'Georgia, serif' => 'Geogia',
-							'Impact, Charcoal, sans-serif' => 'Impact',
-							'"Lucida Console", Monaco, monospace' => 'Lucida Console',
-	 						'"Lucida Sans Unicode", "Lucida Grande", sans-serif' => 'Lucida Sans',
-							'"Palatino Linotype", "Book Antiqua", Palatino, serif' => 'Palatino',
-							'Tahoma, Geneva, sans-serif' => 'Tahoma',
-							'"Times New Roman", Times, serif' => 'Times New Roman',
-							'"Trebuchet MS", Helvetica, sans-serif' => 'Trebuchet',
-							'Verdana, Geneva, sans-serif' => 'Verdana',
-						);
-						foreach ( $options as $family => $label ) {
+						foreach ( self::$webSafeFonts as $family => $label ) {
 							printf( "<option value='%s'%s>%s</option>",
 								$family,
 								selected( $value['font-family'], $family, false ),
@@ -795,7 +805,7 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		?>
 		<div <?php echo $visibilityAttrs ?>>
 			<iframe data-preview-text='<?php echo esc_attr( $this->settings['preview_text'] ) ?>'></iframe>
-			<i class='fa fa-adjust btn-dark'></i>
+			<i class='dashicons dashicons-admin-appearance btn-dark'></i>
 			<input type='hidden' class='tf-font-sel-dark' value='<?php echo esc_attr( $value['dark'] ? 'dark' : '' ) ?>'/>
 		</div>
 		<?php
@@ -844,6 +854,9 @@ class TitanFrameworkOptionFont extends TitanFrameworkOption {
 		}
 		if ( is_array( $value ) ) {
 			$value = array_merge( self::$defaultStyling, $value );
+		}
+		if ( ! empty( $value['font-family'] ) ) {
+			$value['font-type'] = in_array( $value['font-family'], array_keys( self::$webSafeFonts ) ) ? 'websafe' : 'google';
 		}
 		return $value;
 	}
@@ -923,22 +936,7 @@ function registerTitanFrameworkOptionFontControl() {
 				<select class='tf-font-sel-family'>
 				    <optgroup label="Web Safe Fonts" class='safe'>
 						<?php
-						$options = array(
-							'Arial, Helvetica, sans-serif' => 'Arial',
-							'"Arial Black", Gadget, sans-serif' => 'Arial Black',
-							'"Comic Sans MS", cursive, sans-serif' => 'Comic Sans',
-							'"Courier New", Courier, monospace' => 'Courier New',
-							'Georgia, serif' => 'Geogia',
-							'Impact, Charcoal, sans-serif' => 'Impact',
-							'"Lucida Console", Monaco, monospace' => 'Lucida Console',
-	 						'"Lucida Sans Unicode", "Lucida Grande", sans-serif' => 'Lucida Sans',
-							'"Palatino Linotype", "Book Antiqua", Palatino, serif' => 'Palatino',
-							'Tahoma, Geneva, sans-serif' => 'Tahoma',
-							'"Times New Roman", Times, serif' => 'Times New Roman',
-							'"Trebuchet MS", Helvetica, sans-serif' => 'Trebuchet',
-							'Verdana, Geneva, sans-serif' => 'Verdana',
-						);
-						foreach ( $options as $family => $label ) {
+						foreach ( TitanFrameworkOptionFont::$webSafeFonts as $family => $label ) {
 							printf( "<option value='%s'%s>%s</option>",
 								$family,
 								selected( $value['font-family'], $family, false ),
@@ -1207,7 +1205,7 @@ function registerTitanFrameworkOptionFontControl() {
 			?>
 			<div <?php echo $visibilityAttrs ?>>
 				<iframe></iframe>
-				<i class='fa fa-adjust btn-dark'></i>
+				<i class='dashicons dashicons-admin-appearance btn-dark'></i>
 				<input type='hidden' class='tf-font-sel-dark' value='<?php echo esc_attr( $value['dark'] ? 'dark' : '' ) ?>'/>
 			</div>
 			<?php

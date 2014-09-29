@@ -4,12 +4,14 @@ Plugin Name: Titan Framework
 Plugin URI: http://www.titanframework.net/
 Description: Titan Framework allows theme and plugin developers to create a admin pages, options, meta boxes, and theme customizer options with just a few simple lines of code.
 Author: Benjamin Intal, Gambit
-Version: 1.5.2
+Version: 1.6
 Author URI: http://gambit.ph
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
 
+// Used for tracking the version used
+defined( 'TF_VERSION' ) or define( 'TF_VERSION', '1.6' );
 // Used for text domains
 defined( 'TF_I18NDOMAIN' ) or define( 'TF_I18NDOMAIN', 'titan-framework' );
 // Used for general naming, e.g. nonces
@@ -27,6 +29,7 @@ require_once( TF_PATH . 'class-option.php' );
 require_once( TF_PATH . 'class-option-checkbox.php' );
 require_once( TF_PATH . 'class-option-code.php' );
 require_once( TF_PATH . 'class-option-color.php' );
+require_once( TF_PATH . 'class-option-enable.php' );
 require_once( TF_PATH . 'class-option-editor.php' );
 require_once( TF_PATH . 'class-option-font.php' );
 require_once( TF_PATH . 'class-option-heading.php' );
@@ -41,7 +44,6 @@ require_once( TF_PATH . 'class-option-radio-image.php' );
 require_once( TF_PATH . 'class-option-radio-palette.php' );
 require_once( TF_PATH . 'class-option-save.php' );
 require_once( TF_PATH . 'class-option-select-categories.php' );
-require_once( TF_PATH . 'class-option-select-googlefont.php' );
 require_once( TF_PATH . 'class-option-select-pages.php' );
 require_once( TF_PATH . 'class-option-select-posts.php' );
 require_once( TF_PATH . 'class-option-select.php' );
@@ -52,6 +54,7 @@ require_once( TF_PATH . 'class-option-upload.php' );
 require_once( TF_PATH . 'class-theme-customizer-section.php' );
 require_once( TF_PATH . 'class-titan-css.php' );
 require_once( TF_PATH . 'class-titan-framework.php' );
+require_once( TF_PATH . 'class-titan-tracking.php' );
 require_once( TF_PATH . 'class-wp-customize-control.php' );
 require_once( TF_PATH . 'functions-googlefonts.php' );
 require_once( TF_PATH . 'functions-utils.php' );
@@ -74,6 +77,19 @@ class TitanFrameworkPlugin {
 		add_action( 'plugins_loaded', array( $this, 'loadTextDomain' ) );
 		add_action( 'plugins_loaded', array( $this, 'forceLoadFirst' ), 10, 1 );
 		add_filter( 'plugin_row_meta', array( $this, 'pluginLinks' ), 10, 2 );
+		add_action( 'after_setup_theme', array( $this, 'triggerOptionCreation' ), 5 );
+	}
+
+
+	/**
+	 * This will trigger the loading of all the options
+	 *
+	 * @access	public
+	 * @return	void
+	 * @since	1.6
+	 */
+	public function triggerOptionCreation() {
+		do_action( 'tf_create_options' );
 	}
 
 
