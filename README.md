@@ -52,7 +52,11 @@ We want Titan Framework to be used by everyone, and since not everyone speaks or
 
 #### Current Translations
 * French (thanks @PunKeel)
+* German (thanks @jascha)
+* Italian (thanks @DavideVogliotti & Giuseppe Pignataro)
+* Portuguese (thanks @pagelab)
 * Spanish (thanks @maperezotero)
+* Turkish (thanks @gurkankara)
 
 ## Important Links
 

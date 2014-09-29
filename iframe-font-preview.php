@@ -7,6 +7,11 @@ if ( empty( $_GET ) ) {
 	return;
 }
 
+// Sanitize the inputs
+foreach ( $_GET as $key => $value ) {
+	$_GET[ $key ] = htmlspecialchars( $value );
+}
+
 // @see	http://bavotasan.com/2011/convert-hex-color-to-rgb-using-php/
 function hex2rgb($hex) {
    $hex = str_replace("#", "", $hex);
@@ -99,7 +104,7 @@ if ( $_GET['text-shadow-location'] != 'none' ) {
 				line-height: <?php echo $_GET['line-height'] ?>;
 				letter-spacing: <?php echo $_GET['letter-spacing'] ?>;
 				text-transform: <?php echo $_GET['text-transform'] ?>;
-				font-variant: <?php echo $_GET['font-faviant'] ?>;
+				font-variant: <?php echo $_GET['font-variant'] ?>;
 				text-shadow: <?php echo $textShadow ?>;
 			}
 			body {
@@ -134,9 +139,15 @@ if ( $_GET['text-shadow-location'] != 'none' ) {
 		</script>
 	</head>
 	<body class='<?php echo $_GET['dark'] ?>'>
-		<p>Grumpy wizards make toxic brew for the evil Queen and Jack</p>
-		<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam at dolor non purus adipiscing rhoncus. Nullam vitae turpis pharetra odio feugiat gravida sed ac velit. Nullam luctus ultrices suscipit. Fusce condimentum laoreet cursus. Suspendisse sed accumsan tortor. Quisque pharetra pulvinar ante, feugiat varius nibh sodales nec. Fusce vel mattis lectus. Vivamus magna felis, pharetra in lacinia sed, condimentum quis nisi. Ut at rutrum urna. Vivamus convallis posuere metus vel ullamcorper.</p>
-
-
+		<?php
+		if ( empty( $_GET['text'] ) ):
+			?>
+			<p>Grumpy wizards make toxic brew for the evil Queen and Jack</p>
+			<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam at dolor non purus adipiscing rhoncus. Nullam vitae turpis pharetra odio feugiat gravida sed ac velit. Nullam luctus ultrices suscipit. Fusce condimentum laoreet cursus. Suspendisse sed accumsan tortor. Quisque pharetra pulvinar ante, feugiat varius nibh sodales nec. Fusce vel mattis lectus. Vivamus magna felis, pharetra in lacinia sed, condimentum quis nisi. Ut at rutrum urna. Vivamus convallis posuere metus vel ullamcorper.</p>
+			<?php
+		else:
+			echo "<p>" . str_replace( "\n", "</p><p>", $_GET['text'] ) . "</p>";
+		endif;
+		?>
 	</body>
 </html>
