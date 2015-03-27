@@ -10,6 +10,11 @@
  *
  * To use this script, just copy it into your theme/plugin directory and do a
  * require_once( 'titan-framework-checker.php' );
+ *
+ * Changelog:
+ * v1.7.4
+ *		* Now integrates with TGM Plugin Activation - uses TGM instead of displaying
+ *			our own admin notice
  */
 
 
